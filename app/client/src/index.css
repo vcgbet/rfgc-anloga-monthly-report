@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Custom Church Styles */
+.church-navy {
+  color: #1e3a8a;
+}
+.church-gold {
+  color: #b45309;
+}
+.bg-church-navy {
+  background-color: #1e3a8a;
+}
+.bg-church-gold {
+  background-color: #b45309;
+}
+.border-church-navy {
+  border-color: #1e3a8a;
+}
+
+/* Print and PDF Export Styles */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-page {
+    page-break-after: always;
+    margin: 0;
+    padding: 15mm;
+  }
+}
