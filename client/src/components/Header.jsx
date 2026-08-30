@@ -13,6 +13,7 @@ import {
   Layers
 } from 'lucide-react';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import RFGC_LOGO from '../assets/logo';
 
 export const Header = () => {
   const { user, logout, switchUserDirect, isAdmin } = useAuth();
@@ -47,20 +48,27 @@ export const Header = () => {
 
   return (
     <>
-      <header className="bg-[#1e3a8a] text-white shadow-md border-b-4 border-[#b45309]">
+      <header className="bg-[#0F1E36] text-white shadow-md border-b-4 border-amber-500 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-3 flex flex-col md:flex-row items-center justify-between gap-3">
-            {/* Branding Header */}
-            <div className="text-center md:text-left">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-wide text-white uppercase font-serif drop-shadow-sm">
-                ANLOGA DISTRICT RHEMA FULL GOSPEL CHURCHES
-              </h1>
-              <div className="flex items-center justify-center md:justify-start gap-2 mt-0.5">
-                <span className="text-xs sm:text-sm font-semibold tracking-widest text-amber-300 uppercase">
-                  MONTHLY REPORT
-                </span>
-                <span className="text-blue-300 text-xs">•</span>
-                <span className="text-blue-200 text-xs font-medium">Digital Portal & Synced Records</span>
+          <div className="py-2.5 sm:py-3 flex flex-col md:flex-row items-center justify-between gap-3">
+            {/* Branding Header with Real RFGC Logo */}
+            <div className="flex items-center gap-3 text-center md:text-left">
+              <img
+                src={RFGC_LOGO}
+                alt="RFGC Official Logo"
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white p-0.5 shadow-md object-contain border-2 border-amber-400 shrink-0"
+              />
+              <div>
+                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-wide text-white uppercase font-serif drop-shadow-sm">
+                  ANLOGA DISTRICT RHEMA FULL GOSPEL CHURCHES
+                </h1>
+                <div className="flex items-center justify-center md:justify-start gap-2 mt-0.5">
+                  <span className="text-xs font-bold tracking-widest text-amber-400 uppercase">
+                    MONTHLY REPORT
+                  </span>
+                  <span className="text-blue-300 text-xs">•</span>
+                  <span className="text-blue-200 text-xs font-medium">Digital Portal & Synced Records</span>
+                </div>
               </div>
             </div>
 
@@ -204,7 +212,7 @@ const ToastContainer = () => {
       {notifications.map((n) => (
         <div
           key={n.id}
-          className={`pointer-events-auto p-3.5 rounded-xl shadow-xl border text-xs font-medium flex items-start justify-between gap-3 animate-in fade-in slide-in-from-right-4 transition-all ${
+          className={`pointer-events-auto p-3.5 rounded-xl shadow-xl border text-xs font-medium flex items-start justify-between gap-3 animate-in fade-in slide-from-right-4 transition-all ${
             n.type === 'success'
               ? 'bg-emerald-900 text-emerald-100 border-emerald-700 shadow-emerald-900/30'
               : n.type === 'warning'

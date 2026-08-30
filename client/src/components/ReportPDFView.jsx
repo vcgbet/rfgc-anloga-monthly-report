@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Download, Printer, X, CheckCircle, FileText } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import RFGC_LOGO from '../assets/logo';
 
 export const ReportPDFView = ({ report, onClose }) => {
   const printAreaRef = useRef(null);
@@ -114,6 +115,13 @@ export const ReportPDFView = ({ report, onClose }) => {
             
             {/* 1. Header */}
             <div className="text-center pb-4">
+              <div className="flex justify-center mb-2">
+                <img
+                  src={RFGC_LOGO}
+                  alt="RFGC Logo"
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-full border-2 border-amber-500 shadow-sm"
+                />
+              </div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#1B365D] uppercase font-serif">
                 ANLOGA DISTRICT RHEMA FULL GOSPEL CHURCHES
               </h1>
