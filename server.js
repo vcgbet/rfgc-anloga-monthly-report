@@ -19,8 +19,8 @@ const io = new Server(server, {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static frontend in production
 const publicPath = path.join(__dirname, 'public');
@@ -38,8 +38,21 @@ io.on('connection', (socket) => {
     socket.emit('full_sync_data', {
       branches: db.getBranches(),
       reports: db.getReports(),
+      users: db.getUsers(),
       timestamp: new Date().toISOString()
     });
+  });
+
+  socket.on('client_sync_push', (clientData) => {
+    const result = db.reconcileData(clientData);
+    if (result.hasChanges) {
+      socket.broadcast.emit('sync_data_updated', {
+        branches: result.branches,
+        reports: result.reports,
+        users: result.users,
+        timestamp: new Date().toISOString()
+      });
+    }
   });
 });
 
@@ -200,6 +213,54 @@ app.post('/api/reports/:id/endorse', (req, res) => {
   if (!updated) return res.status(404).json({ error: 'Report not found' });
   broadcastEvent('report_endorsed', { report: updated });
   res.json(updated);
+});
+
+// --- BI-DIRECTIONAL SMART PERSISTENCE RECONCILIATION ---
+app.post('/api/sync/reconcile', (req, res) => {
+  try {
+    const result = db.reconcileData(req.body);
+    if (result.hasChanges) {
+      broadcastEvent('sync_data_updated', {
+        branches: result.branches,
+        reports: result.reports,
+        users: result.users,
+        timestamp: new Date().toISOString()
+      });
+    }
+    res.json({
+      success: true,
+      branches: result.branches,
+      reports: result.reports,
+      users: result.users,
+      hasChanges: result.hasChanges
+    });
+  } catch (err) {
+    console.error('Error during reconciliation:', err);
+    res.status(500).json({ error: 'Reconciliation error: ' + err.message });
+  }
+});
+
+// --- BACKUP & RESTORE ROUTES ---
+app.get('/api/system/backup', (req, res) => {
+  const fullBackup = db.getFullDatabase();
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="anloga-rfgc-backup-${new Date().toISOString().split('T')[0]}.json"`);
+  res.json(fullBackup);
+});
+
+app.post('/api/system/restore', (req, res) => {
+  try {
+    const restored = db.restoreBackup(req.body);
+    broadcastEvent('system_reset', { restored: true });
+    res.json({
+      success: true,
+      message: 'Database backup restored successfully',
+      data: restored
+    });
+  } catch (err) {
+    console.error('Error restoring backup:', err);
+    res.status(400).json({ error: 'Restore failed: ' + err.message });
+  }
 });
 
 // --- AI ANALYTICS ROUTES ---

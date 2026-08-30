@@ -20,7 +20,12 @@ function loadDb() {
   try {
     if (fs.existsSync(DB_FILE)) {
       const data = fs.readFileSync(DB_FILE, 'utf8');
-      db = JSON.parse(data);
+      const parsed = JSON.parse(data);
+      db = {
+        branches: Array.isArray(parsed.branches) && parsed.branches.length > 0 ? parsed.branches : JSON.parse(JSON.stringify(INITIAL_BRANCHES)),
+        users: Array.isArray(parsed.users) && parsed.users.length > 0 ? parsed.users : JSON.parse(JSON.stringify(INITIAL_USERS)),
+        reports: Array.isArray(parsed.reports) && parsed.reports.length > 0 ? parsed.reports : JSON.parse(JSON.stringify(INITIAL_REPORTS))
+      };
     } else {
       db = {
         branches: JSON.parse(JSON.stringify(INITIAL_BRANCHES)),
@@ -264,7 +269,7 @@ function createReport(reportData, user) {
   finance.total = calculateFinanceTotal(finance);
 
   const newReport = {
-    id: `rep-${uuidv4().substring(0, 8)}`,
+    id: reportData.id || `rep-${uuidv4().substring(0, 8)}`,
     branchId: reportData.branchId || '',
     branchName: reportData.branchName || '',
     month: reportData.month || '',
@@ -296,9 +301,9 @@ function createReport(reportData, user) {
       }
     },
     createdBy: user?.id || 'anonymous',
-    createdAt: new Date().toISOString(),
+    createdAt: reportData.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    history: [
+    history: reportData.history && reportData.history.length > 0 ? reportData.history : [
       {
         timestamp: new Date().toISOString(),
         action: reportData.status === 'submitted_to_pastor' ? 'Submitted to Pastor for Review' : 'Report Created (Draft)',
@@ -308,14 +313,24 @@ function createReport(reportData, user) {
     ]
   };
 
-  db.reports.push(newReport);
+  // Check if report with this ID already exists
+  const existingIdx = db.reports.findIndex(r => r.id === newReport.id);
+  if (existingIdx !== -1) {
+    db.reports[existingIdx] = newReport;
+  } else {
+    db.reports.push(newReport);
+  }
+
   saveDb();
   return newReport;
 }
 
 function updateReport(id, reportData, user) {
   const index = db.reports.findIndex(r => r.id === id);
-  if (index === -1) return null;
+  if (index === -1) {
+    // If not found, create it with this id
+    return createReport({ ...reportData, id }, user);
+  }
 
   const current = db.reports[index];
   const finance = reportData.finance || current.finance || {};
@@ -375,6 +390,98 @@ function deleteReport(id) {
   return true;
 }
 
+// Bi-directional Data Reconciliation across browser storage and backend server
+function reconcileData(clientData = {}) {
+  let hasChanges = false;
+  const clientReports = Array.isArray(clientData.reports) ? clientData.reports : [];
+  const clientBranches = Array.isArray(clientData.branches) ? clientData.branches : [];
+  const clientUsers = Array.isArray(clientData.users) ? clientData.users : [];
+
+  // Merge client reports into db
+  clientReports.forEach(cRep => {
+    if (!cRep || !cRep.id) return;
+    const serverIdx = db.reports.findIndex(r => r.id === cRep.id);
+    if (serverIdx === -1) {
+      // Server is missing this report (e.g. server restarted on Render free tier!)
+      db.reports.push(cRep);
+      hasChanges = true;
+    } else {
+      // Compare updated timestamps
+      const serverDate = new Date(db.reports[serverIdx].updatedAt || db.reports[serverIdx].createdAt || 0).getTime();
+      const clientDate = new Date(cRep.updatedAt || cRep.createdAt || 0).getTime();
+      if (clientDate > serverDate) {
+        db.reports[serverIdx] = cRep;
+        hasChanges = true;
+      }
+    }
+  });
+
+  // Merge client branches if missing
+  clientBranches.forEach(cBranch => {
+    if (!cBranch || !cBranch.id) return;
+    const serverIdx = db.branches.findIndex(b => b.id === cBranch.id || b.name.toLowerCase() === cBranch.name.toLowerCase());
+    if (serverIdx === -1) {
+      db.branches.push(cBranch);
+      hasChanges = true;
+    }
+  });
+
+  // Merge client users if missing or updated
+  clientUsers.forEach(cUser => {
+    if (!cUser || !cUser.id) return;
+    const serverIdx = db.users.findIndex(u => u.id === cUser.id || u.username.toLowerCase() === cUser.username.toLowerCase());
+    if (serverIdx === -1) {
+      db.users.push(cUser);
+      hasChanges = true;
+    }
+  });
+
+  if (hasChanges) {
+    saveDb();
+  }
+
+  return {
+    branches: db.branches,
+    users: db.users,
+    reports: db.reports,
+    hasChanges
+  };
+}
+
+// Restore entire backup
+function restoreBackup(backupData) {
+  if (!backupData || typeof backupData !== 'object') {
+    throw new Error('Invalid backup data format');
+  }
+
+  if (Array.isArray(backupData.branches) && backupData.branches.length > 0) {
+    db.branches = backupData.branches;
+  }
+  if (Array.isArray(backupData.users) && backupData.users.length > 0) {
+    db.users = backupData.users;
+  }
+  if (Array.isArray(backupData.reports)) {
+    db.reports = backupData.reports;
+  }
+
+  saveDb();
+  return {
+    branches: db.branches,
+    users: db.users,
+    reports: db.reports
+  };
+}
+
+function getFullDatabase() {
+  return {
+    branches: db.branches,
+    users: db.users,
+    reports: db.reports,
+    exportedAt: new Date().toISOString(),
+    system: 'ANLOGA DISTRICT RHEMA FULL GOSPEL CHURCHES'
+  };
+}
+
 function resetDb() {
   db = {
     branches: JSON.parse(JSON.stringify(INITIAL_BRANCHES)),
@@ -404,5 +511,8 @@ module.exports = {
   createReport,
   updateReport,
   deleteReport,
+  reconcileData,
+  restoreBackup,
+  getFullDatabase,
   resetDb
 };

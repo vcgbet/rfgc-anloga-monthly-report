@@ -69,6 +69,13 @@ export const api = {
   submitReportToPastor: (id, data, user) => request(`/reports/${id}/submit-to-pastor`, { method: 'POST', body: { ...data, _user: user } }),
   endorseReport: (id, data, user) => request(`/reports/${id}/endorse`, { method: 'POST', body: { ...data, _user: user } }),
 
+  // Bi-directional Persistence Reconcile
+  reconcile: (data) => request('/sync/reconcile', { method: 'POST', body: data }),
+
+  // System Backup & Restore
+  getBackup: () => request('/system/backup'),
+  restoreBackup: (data) => request('/system/restore', { method: 'POST', body: data }),
+
   // AI Analytics
   getBranchAnalytics: (branchIdentifier) => request(`/analytics/branch/${encodeURIComponent(branchIdentifier)}`),
   getDistrictAnalytics: () => request('/analytics/district'),

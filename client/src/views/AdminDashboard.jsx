@@ -16,6 +16,7 @@ import {
   EyeOff, 
   Key, 
   Download, 
+  Upload,
   ShieldCheck, 
   CheckCircle2, 
   Clock, 
@@ -28,7 +29,8 @@ import {
   RefreshCw,
   Award,
   ChevronRight,
-  X
+  X,
+  Database
 } from 'lucide-react';
 
 const MONTHS = [
@@ -185,6 +187,53 @@ export const AdminDashboard = () => {
     }
   };
 
+  // --- DATABASE BACKUP & RESTORE ---
+  const handleDownloadBackup = () => {
+    const backupData = {
+      system: 'ANLOGA DISTRICT RHEMA FULL GOSPEL CHURCHES',
+      version: '3.0',
+      exportedAt: new Date().toISOString(),
+      branches,
+      users: usersList,
+      reports
+    };
+    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `anloga-rfgc-database-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addNotification('💾 Database backup downloaded successfully! Keep this file safe.', 'success');
+  };
+
+  const handleRestoreFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (!parsed.branches && !parsed.reports && !parsed.users) {
+          throw new Error('Invalid backup file structure');
+        }
+        if (!window.confirm(`Restore database from "${file.name}"? This will sync all contained reports (${parsed.reports?.length || 0}) and branches.`)) {
+          return;
+        }
+        await api.restoreBackup(parsed);
+        addNotification('🎉 Database backup restored successfully! All reports and credentials reloaded.', 'success');
+        refreshAll();
+      } catch (err) {
+        alert('Failed to restore backup: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   // Generate Unique Logins for Pastors & Secretaries
   const handleGenerateUniqueLogins = async () => {
     if (!window.confirm('This will automatically generate fresh unique usernames and passwords for all Pastors & Secretaries. Continue?')) return;
@@ -247,8 +296,28 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Action Buttons: Change Password & System Reset */}
+        {/* Action Buttons: Change Password, Backup, Restore & Refresh */}
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleDownloadBackup}
+            className="px-3 py-2 bg-emerald-800 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5"
+            title="Download full JSON backup of all submitted reports, users and branches"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Backup Data</span>
+          </button>
+
+          <label className="px-3 py-2 bg-blue-900 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition shadow flex items-center gap-1.5 cursor-pointer" title="Restore database from a saved JSON backup file">
+            <Upload className="w-3.5 h-3.5 text-blue-300" />
+            <span>Restore Backup</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleRestoreFile}
+              className="hidden"
+            />
+          </label>
+
           <button
             onClick={() => {
               setPasswordTargetUser(user);
